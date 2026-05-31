@@ -17,7 +17,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #2c2543; /* רקע סגול אינדיגו עמוק כהה */
+            background-color: #2c2543; /* רקע סגול אינדיגו עמוק מהרפרנס */
             overflow: hidden;
             font-family: "futura-pt", "Futura", sans-serif;
             -webkit-tap-highlight-color: transparent;
@@ -25,7 +25,7 @@
         canvas { display: block; }
         #webcam { display: none; }
 
-        /* מסך פתיחה טיפוגרפי אלגנטי */
+        /* מסך פתיחה אלגנטי מותאם לצבעי ה-Dark Mode */
         #splash-screen {
             position: fixed;
             top: 0;
@@ -42,7 +42,7 @@
         }
         .splash-sub {
             font-family: "futura-pt", "Futura", sans-serif;
-            font-size: 13px;
+            font-size: 13px; /* נשאר קטן, עדין ודק */
             font-weight: normal;
             color: #f4f3ef;
             text-align: center;
@@ -95,23 +95,22 @@ let faceMesh;
 let camera;
 
 let strokeW = 8;
-let mainLightColor; 
+let mainLightColor; // הצבע הבהיר של האלמנטים על גבי הרקע הסגול
 
 // ניהול מצב חוויה
 let experienceStarted = false;
 
-// מנוע פילטר קשיח ומאוזן
+// מנוע פילטר למניעת לאגים במצמוץ (מהקוד המקור שלך)
 let eyesClosedRealtime = false; 
 let eyesConfirmedClosed = false; 
 let lastEyeStateChangeTime = 0;
-let eyeVisualProgress = 0; // חזרה למשתנה האנימציה המקורי
-let smoothDist = 0.025; 
+let eyeVisualProgress = 0;
 let volHistory = new Array(120).fill(0);
 
 // זיכרון זמן לשיר
 let lastSavedTime = 0;
 
-// מנוע אישון ממורכז ומאוזן
+// מנוע אישון דינמי ומדויק (מהקוד המקור שלך)
 let pupilOffset = { x: 0, y: 0 };
 let targetPupil = { x: 0, y: 0 };
 
@@ -126,7 +125,7 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
     amplitude = new p5.Amplitude(0.85);
-    mainLightColor = color(244, 243, 239); // צבע הלבן-שמנת היוקרתי
+    mainLightColor = color(244, 243, 239); // צבע לבן-שמנת עדין ויוקרתי
 }
 
 function startExperience() {
@@ -141,7 +140,7 @@ function startExperience() {
 }
 
 function draw() {
-    background(44, 37, 67); 
+    background(44, 37, 67); // רקע סגול אינדיגו עמוק קבוע
 
     if (!experienceStarted) return;
 
@@ -150,22 +149,19 @@ function draw() {
     drawPlayerScreen();
 }
 
+// פילטר שמפריד בין מצמוץ טבעי מהיר לעצימה מכוונת (מהקוד המקור שלך)
 function updateEyeStatus() {
     let now = millis();
-    
     if (eyesClosedRealtime !== eyesConfirmedClosed) {
-        if (!eyesClosedRealtime) {
-            eyesConfirmedClosed = false;
-            lastEyeStateChangeTime = now;
-        } else if (now - lastEyeStateChangeTime > 280) { 
-            // רק עצימה אמיתית ומוחלטת (לא מצמוץ) מאשרת את המוזיקה
-            eyesConfirmedClosed = true;
+        if (now - lastEyeStateChangeTime > 200) { 
+            eyesConfirmedClosed = eyesClosedRealtime;
         }
     } else {
         lastEyeStateChangeTime = now;
     }
 }
 
+// ניהול נגינה קשיח (מהקוד המקור שלך)
 function handleMusicLogic() {
     if (!song || !song.isLoaded()) return;
 
@@ -189,17 +185,17 @@ function drawPlayerScreen() {
 
     let timelineY = height / 2;
     let centerX = width / 2;
-    let centerY = height / 4 + 20; 
+    let centerY = height / 4 + 20;
 
-    // 1. ציור קו הטיימליין
+    // קו טיימליין בהיר ונקי
     stroke(mainLightColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
 
     let durationSec = song && song.isLoaded() ? song.duration() : 180;
     let currentSec = (song && song.isPlaying()) ? song.currentTime() : lastSavedTime;
-    let progressX = map(currentSec, 0, durationSec, 0, width);
     
+    let progressX = map(currentSec, 0, durationSec, 0, width);
     fill(mainLightColor);
     noStroke();
     ellipse(progressX, timelineY, 18, 18);
@@ -210,30 +206,27 @@ function drawPlayerScreen() {
         return; 
     }
 
-    // 2. החזרת מנוע התגובתיות המקורי והחלק של המצמוץ בזמן אמת
-    let targetVisual = eyesConfirmedClosed ? 1 : 0;
-    eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.18); 
+    // אנימציה גרפית חלקה של העין (המקורית והתגובתית שלך)
+    let targetVisual = eyesClosedRealtime ? 1 : 0;
+    eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.25);
 
-    push();
-    translate(centerX, centerY);
-
-    // 3. ציור העין בגודל ובפרופורציות המקוריות והמדויקות (95)
     stroke(mainLightColor);
     strokeWeight(strokeW);
     noFill();
 
-    // חזרה לגובה המקורי והחלטי (50 פתוח לרווחה בדיפולט, משתנה בצורה חלקה לפי המצמוץ)
+    push();
+    translate(centerX, centerY);
     let currentEyeHeight = map(eyeVisualProgress, 0, 1, 50, 0);
 
-    if (eyeVisualProgress < 0.88) {
-        // עין פתוחה או מגיבה למצמוץ דינמי
+    if (eyeVisualProgress < 0.9) {
+        // עין פתוחה
         arc(0, 0, 95, currentEyeHeight, 0, PI, OPEN);
         arc(0, 0, 95, currentEyeHeight, PI, TWO_PI, OPEN);
         
-        pupilOffset.x = lerp(pupilOffset.x, targetPupil.x, 0.15);
-        pupilOffset.y = lerp(pupilOffset.y, targetPupil.y, 0.15);
+        pupilOffset.x = lerp(pupilOffset.x, targetPupil.x, 0.2);
+        pupilOffset.y = lerp(pupilOffset.y, targetPupil.y, 0.2);
         
-        let limitedX = constrain(pupilOffset.x, -10, 10);
+        let limitedX = constrain(pupilOffset.x, -14, 14);
         let limitedY = constrain(pupilOffset.y, -6, 6);
         
         fill(mainLightColor);
@@ -241,7 +234,7 @@ function drawPlayerScreen() {
         let pupilSize = map(eyeVisualProgress, 0, 1, 25, 0);
         ellipse(limitedX, limitedY, pupilSize, pupilSize);
     } else {
-        // עין עצומה פוזיטיבית
+        // עין עצומה
         stroke(mainLightColor);
         line(-47, 0, 47, 0);
         line(-25, 0, -25, 8);
@@ -250,37 +243,38 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // 4. תיקון מיקום והחזרת הטיפוגרפיה (ממוקמת בצורה בטוחה ויחסית מתחת לטיימליין)
+    // טיפוגרפיה - חזרה לגודל הקודם והעדין (14px) ומיקום יחסי בטוח
     textAlign(CENTER, TOP);
     noStroke();
-    textFont("futura-pt", 19); 
-    textStyle(BOLD); 
+    textFont("futura-pt", 14); // חזר ל-14px קטן ומינימליסטי
+    textStyle(NORMAL);
 
-    let textY = timelineY + 120; // מיקום יחסי קבוע ומרווח מתחת לטיימליין כדי למנוע חיתוך במסכים
-    let padding = 20; 
+    let textY = timelineY + 120; // ממוקם במרחק אלגנטי מתחת לטיימליין
+    let padding = 45; 
     let textW = width - (padding * 2);
 
-    fill(mainLightColor);
-    push();
-    drawingContext.letterSpacing = "1px"; 
-    text("CLOSE YOUR EYES TO EXPERIENCE TIME", width / 2 - textW / 2, textY, textW);
-    pop();
+    if (eyesConfirmedClosed) {
+        fill(mainLightColor, 130);
+        text("KEEP THEM CLOSED. TIME IS FLOWING.", width / 2 - textW / 2, textY, textW, 50);
+    } else {
+        fill(mainLightColor);
+        text("LOOKING AT THE SCREEN FREEZES TIME.\nCLOSE YOUR EYES.", width / 2 - textW / 2, textY, textW, 50);
+    }
 }
 
 function drawLinearMonitor(baselineY) {
     let level = amplitude.getLevel();
     let isMoving = song && song.isPlaying();
-    let targetY = isMoving ? map(level, 0, 0.3, 0, 75, true) : 0;
+    let targetY = isMoving ? map(level, 0, 0.3, 0, 95, true) : 0;
     
     volHistory.push(targetY);
     if (volHistory.length > width / 4) volHistory.shift();
 
-    push();
-    translate(0, baselineY);
-    stroke(mainLightColor); 
+    stroke(mainLightColor);
     strokeWeight(4);
     noFill();
-    
+    push();
+    translate(0, baselineY);
     beginShape();
     for (let i = 0; i < volHistory.length; i++) {
         let x = map(i, 0, volHistory.length - 1, 0, width);
@@ -301,8 +295,8 @@ function initMediaPipe() {
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true, 
-        minDetectionConfidence: 0.7, 
-        minTrackingConfidence: 0.7
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
     });
 
     faceMesh.onResults(onFaceResults);
@@ -337,8 +331,7 @@ function onFaceResults(results) {
     let leftDist = dist(leftTop.x, leftTop.y, leftBottom.x, leftBottom.y);
     let rightDist = dist(rightTop.x, rightTop.y, rightBottom.x, rightBottom.y);
 
-    // סף זיהוי קשיח ופוזיטיבי לעצימה בלבד
-    if (leftDist < 0.0140 && rightDist < 0.0140) {
+    if (leftDist < 0.0165 && rightDist < 0.0165) {
         eyesClosedRealtime = true;
     } else {
         eyesClosedRealtime = false;
@@ -360,7 +353,7 @@ function onFaceResults(results) {
             let relativeY = irisPosFromTop / totalEyeHeight;
             let normalizedY = relativeY - 0.5;
 
-            targetPupil.x = map(normalizedX, -0.12, 0.12, -10, 10, true);
+            targetPupil.x = map(normalizedX, -0.12, 0.12, 18, -18, true);
             targetPupil.y = map(normalizedY, -0.15, 0.15, -6, 6, true);
         } else {
             targetPupil.x = 0;
