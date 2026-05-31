@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Look and Listen Pro Precision</title>
+    <title>Look and Listen Safe</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
@@ -24,48 +24,9 @@
         }
         canvas { display: block; }
         #webcam { display: none; }
-
-        /* מסך פתיחה אלגנטי שעובד ב-100% בכרום */
-        #splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.4s ease, visibility 0.4s ease;
-        }
-        #start-btn {
-            background-color: #663399;
-            color: #ffffff;
-            border: none;
-            padding: 16px 50px;
-            font-family: "futura-pt", "Futura", sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            letter-spacing: 3px;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(102, 51, 153, 0.2);
-            outline: none;
-            margin-top: 40px;
-            transition: transform 0.1s ease;
-        }
-        #start-btn:active {
-            transform: scale(0.96);
-        }
     </style>
 </head>
 <body>
-
-<div id="splash-screen">
-    <button id="start-btn" onclick="startExperience()">START</button>
-</div>
 
 <video id="webcam" autoplay playsinline></video>
 
@@ -78,27 +39,24 @@ let camera;
 let strokeW = 8;
 let purpleColor;
 
-// מצבי מערכת
-let experienceStarted = false;
-
-// פילטר מצמוץ למניעת לאגים
+// מנוע פילטר למניעת לאגים במצמוץ
 let eyesClosedRealtime = false; 
 let eyesConfirmedClosed = false; 
 let lastEyeStateChangeTime = 0;
 let eyeVisualProgress = 0;
 let volHistory = new Array(120).fill(0);
 
-// זיכרון זמן השיר
+// זיכרון זמן לשיר
 let lastSavedTime = 0;
 
-// מנוע אישון רגיש ומכויול
+// מנוע אישון דינמי ומדויק
 let pupilOffset = { x: 0, y: 0 };
 let targetPupil = { x: 0, y: 0 };
 
 function preload() {
     soundFormats('mp3');
     song = loadSound('song.mp3', 
-        () => console.log("Audio Active"), 
+        () => console.log("Audio Loaded"), 
         () => console.log("Backup audio active")
     );
 }
@@ -108,44 +66,18 @@ function setup() {
     amplitude = new p5.Amplitude(0.85);
     purpleColor = color(102, 51, 153);
     
-    // הפעלת MediaPipe מיד ברקע כדי לאפשר גם זיהוי מצמוץ להפעלה
     initMediaPipe();
-}
-
-// פונקציית הפעלה רשמית (בלחיצה או במצמוץ)
-function startExperience() {
-    if (experienceStarted) return;
-    
-    userStartAudio(); // אישור סאונד מיידי לדפדפן כרום
-    experienceStarted = true;
-    
-    let splash = document.getElementById('splash-screen');
-    splash.style.opacity = '0';
-    splash.style.visibility = 'hidden';
 }
 
 function draw() {
     background(255); 
 
     updateEyeStatus(); 
-    
-    if (!experienceStarted) {
-        // מסך פתיחה: מציג את העין הגרפית פתוחה ויציבה במרכז מעל הכפתור
-        drawSplashEye();
-        
-        // פיצ'ר בונוס: אם המשתמש ממצמץ/עוצם עיניים מול המסך פתיחה - זה מפעיל את החוויה!
-        if (eyesClosedRealtime) {
-            startExperience();
-        }
-        return;
-    }
-
-    // הנגן הראשי (רץ רק אחרי הפעלה)
     handleMusicLogic();
     drawPlayerScreen();
 }
 
-// פילטר השהיית מצמוצים
+// פילטר שמפריד בין מצמוץ טבעי מהיר לעצימה מכוונת
 function updateEyeStatus() {
     let now = millis();
     if (eyesClosedRealtime !== eyesConfirmedClosed) {
@@ -157,8 +89,10 @@ function updateEyeStatus() {
     }
 }
 
+// ניהול נגינה קשיח
 function handleMusicLogic() {
     if (!song || !song.isLoaded()) return;
+    userStartAudio(); 
 
     if (eyesConfirmedClosed) {
         if (!song.isPlaying()) {
@@ -175,38 +109,12 @@ function handleMusicLogic() {
     }
 }
 
-// ציור העין בלבד במרכז מסך הפתיחה
-function drawSplashEye() {
-    let centerX = width / 2;
-    let centerY = height / 2 - 60; // ממוקם מעל כפתור ה-START
-
-    stroke(purpleColor);
-    strokeWeight(strokeW);
-    noFill();
-
-    push();
-    translate(centerX, centerY);
-    // עין פתוחה לרווחה ויציבה במסך הבית
-    arc(0, 0, 95, 50, 0, PI, OPEN);
-    arc(0, 0, 95, 50, PI, TWO_PI, OPEN);
-    
-    // האישון זז ברגישות גם במסך הבית
-    pupilOffset.x = lerp(pupilOffset.x, targetPupil.x, 0.2);
-    pupilOffset.y = lerp(pupilOffset.y, targetPupil.y, 0.2);
-    
-    fill(purpleColor);
-    noStroke();
-    ellipse(pupilOffset.x, pupilOffset.y, 25, 25);
-    pop();
-}
-
-// ציור מסך הנגן הראשי
 function drawPlayerScreen() {
     let timelineY = height / 2;
     let centerX = width / 2;
     let centerY = height / 4 + 20;
 
-    // קו טיימליין סגול
+    // קו טיימליין סגול עבה
     stroke(purpleColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
@@ -221,6 +129,7 @@ function drawPlayerScreen() {
 
     drawLinearMonitor(timelineY);
 
+    // אנימציה גרפית חלקה של העין
     let targetVisual = eyesClosedRealtime ? 1 : 0;
     eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.25);
 
@@ -233,21 +142,22 @@ function drawPlayerScreen() {
     let currentEyeHeight = map(eyeVisualProgress, 0, 1, 50, 0);
 
     if (eyeVisualProgress < 0.9) {
+        // עין פתוחה
         arc(0, 0, 95, currentEyeHeight, 0, PI, OPEN);
         arc(0, 0, 95, currentEyeHeight, PI, TWO_PI, OPEN);
         
-        // החלקת תנועה לאישון הגרפי
         pupilOffset.x = lerp(pupilOffset.x, targetPupil.x, 0.2);
         pupilOffset.y = lerp(pupilOffset.y, targetPupil.y, 0.2);
         
-        let limitedX = constrain(pupilOffset.x, -16, 16);
-        let limitedY = constrain(pupilOffset.y, -7, 7);
+        let limitedX = constrain(pupilOffset.x, -14, 14);
+        let limitedY = constrain(pupilOffset.y, -6, 6);
         
         fill(purpleColor);
         noStroke();
         let pupilSize = map(eyeVisualProgress, 0, 1, 25, 0);
         ellipse(limitedX, limitedY, pupilSize, pupilSize);
     } else {
+        // עין עצומה
         stroke(purpleColor);
         line(-47, 0, 47, 0);
         line(-25, 0, -25, 8);
@@ -256,22 +166,22 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // טיפוגרפיה משופרת: משקל כבד (BOLD), ללא נקודות בסוף
+    // טיפוגרפיה
     textAlign(CENTER, CENTER);
     noStroke();
-    textFont("futura-pt", 15);
-    textStyle(BOLD); // משקל כבד יותר
+    textFont("futura-pt", 14);
+    textStyle(NORMAL);
 
     let textY = height - 90;
     let padding = 45; 
     let textW = width - (padding * 2);
 
     if (eyesConfirmedClosed) {
-        fill(purpleColor, 140);
-        text("KEEP THEM CLOSED. TIME IS FLOWING", width / 2 - textW / 2, textY, textW, 50);
+        fill(purpleColor, 130);
+        text("KEEP THEM CLOSED. TIME IS FLOWING.", width / 2 - textW / 2, textY, textW, 50);
     } else {
         fill(purpleColor);
-        text("LOOKING AT THE SCREEN FREEZES TIME\nCLOSE YOUR EYES", width / 2 - textW / 2, textY, textW, 50);
+        text("LOOKING AT THE SCREEN FREEZES TIME.\nCLOSE YOUR EYES.", width / 2 - textW / 2, textY, textW, 50);
     }
 }
 
@@ -308,8 +218,8 @@ function initMediaPipe() {
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true, 
-        minDetectionConfidence: 0.5, // הגברת רגישות זיהוי פנים
-        minTrackingConfidence: 0.5
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
     });
 
     faceMesh.onResults(onFaceResults);
@@ -322,13 +232,14 @@ function initMediaPipe() {
         height: 480
     });
     
-    camera.start().catch(err => console.log("Camera sync...", err));
+    camera.start().catch(err => console.log("Camera starting...", err));
 }
 
 function onFaceResults(results) {
+    // *** תיקון ברירת מחדל: אם הפנים זזו מהמסך או לא מזוהות - הכל נפתח ונעצר מיד! ***
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
         eyesClosedRealtime = false;
-        if (experienceStarted) eyesConfirmedClosed = false; 
+        eyesConfirmedClosed = false; // עוצר את השיר במקום
         targetPupil.x = 0;
         targetPupil.y = 0;
         return;
@@ -336,6 +247,7 @@ function onFaceResults(results) {
 
     const landmarks = results.multiFaceLandmarks[0];
 
+    // חישוב מרחק עפעפיים
     let leftTop = landmarks[159];
     let leftBottom = landmarks[145];
     let rightTop = landmarks[386];
@@ -344,12 +256,12 @@ function onFaceResults(results) {
     let leftDist = dist(leftTop.x, leftTop.y, leftBottom.x, leftBottom.y);
     let rightDist = dist(rightTop.x, rightTop.y, rightBottom.x, rightBottom.y);
 
-    if (leftDist < 0.017 && rightDist < 0.017) {
+    if (leftDist < 0.0165 && rightDist < 0.0165) {
         eyesClosedRealtime = true;
     } else {
         eyesClosedRealtime = false;
         
-        // מנוע אישון מיושר ורגיש במיוחד המונע הינעלות בצד ימין (מתוקן מירור של כרום)
+        // חישוב כיוון מבט
         let irisCenter = landmarks[468]; 
         let eyeLeftEdge = landmarks[33]; 
         let eyeRightEdge = landmarks[133]; 
@@ -357,7 +269,6 @@ function onFaceResults(results) {
         if (irisCenter && eyeLeftEdge && eyeRightEdge) {
             let totalEyeWidth = dist(eyeLeftEdge.x, eyeLeftEdge.y, eyeRightEdge.x, eyeRightEdge.y);
             let irisPosFromLeft = dist(eyeLeftEdge.x, eyeLeftEdge.y, irisCenter.x, irisCenter.y);
-            
             let relativeX = irisPosFromLeft / totalEyeWidth;
             let normalizedX = relativeX - 0.5; 
             
@@ -368,9 +279,8 @@ function onFaceResults(results) {
             let relativeY = irisPosFromTop / totalEyeHeight;
             let normalizedY = relativeY - 0.5;
 
-            // כיול מחדש קשיח: היפוך מלא (מירור) והכפלת הרגישות פי 1.8 כדי שיגיב לכל פינה במסך
-            targetPupil.x = map(normalizedX, -0.10, 0.10, -22, 22, true);
-            targetPupil.y = map(normalizedY, -0.12, 0.12, -8, 8, true);
+            targetPupil.x = map(normalizedX, -0.12, 0.12, 18, -18, true);
+            targetPupil.y = map(normalizedY, -0.15, 0.15, -6, 6, true);
         } else {
             targetPupil.x = 0;
             targetPupil.y = 0;
