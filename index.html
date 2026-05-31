@@ -17,7 +17,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #2c2543; /* רקע סגול אינדיגו עמוק כהה */
+            background-color: #2c2543; /* רקע סגול אינדיגו עמוק מהרפרנס */
             overflow: hidden;
             font-family: "futura-pt", "Futura", sans-serif;
             -webkit-tap-highlight-color: transparent;
@@ -25,7 +25,7 @@
         canvas { display: block; }
         #webcam { display: none; }
 
-        /* מסך פתיחה אלגנטי ומותאם */
+        /* מסך פתיחה טיפוגרפי אלגנטי */
         #splash-screen {
             position: fixed;
             top: 0;
@@ -104,8 +104,8 @@ let experienceStarted = false;
 let eyesClosedRealtime = false; 
 let eyesConfirmedClosed = false; 
 let lastEyeStateChangeTime = 0;
-let eyeVisualProgress = 0; 
-let smoothDist = 0.025; // משתנה להחלקת מרחק העפעפיים בזמן אמת
+let eyeVisualProgress = 1; // 1 = פתוח לחלוטין בדיפולט
+let smoothDist = 0.025; 
 let volHistory = new Array(120).fill(0);
 
 // זיכרון זמן לשיר
@@ -126,7 +126,7 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
     amplitude = new p5.Amplitude(0.85);
-    mainLightColor = color(244, 243, 239); // צבע הלבן-שמנת הרך והיוקרתי
+    mainLightColor = color(244, 243, 239); // צבע הלבן-שמנת היוקרתי
 }
 
 function startExperience() {
@@ -155,10 +155,11 @@ function updateEyeStatus() {
     
     if (eyesClosedRealtime !== eyesConfirmedClosed) {
         if (!eyesClosedRealtime) {
+            // אם המצלמה לא רואה עצימה פוזיטיבית מוחלטת - יציאה מיידית
             eyesConfirmedClosed = false;
             lastEyeStateChangeTime = now;
-        } else if (now - lastEyeStateChangeTime > 200) { 
-            // אישור פוזיטיבי מהיר אך יציב
+        } else if (now - lastEyeStateChangeTime > 280) { 
+            // רק עצימה אמיתית, ממושכת וכבדה (ולא מצמוץ חולף) תפעיל את הלוגיקה
             eyesConfirmedClosed = true;
         }
     } else {
@@ -169,7 +170,7 @@ function updateEyeStatus() {
 function handleMusicLogic() {
     if (!song || !song.isLoaded()) return;
 
-    // המוזיקה תופעל פוזיטיבית אך ורק אם העיניים סגורות ב-100%
+    // המוזיקה פועלת פוזיטיבית רק בעצימה מלאה, ולא במצמוצים
     if (eyesConfirmedClosed) {
         if (!song.isPlaying()) {
             song.jump(lastSavedTime); 
@@ -192,7 +193,7 @@ function drawPlayerScreen() {
     let centerX = width / 2;
     let centerY = height / 4 + 20; 
 
-    // 1. ציור קו הטיימליין
+    // 1. ציור קו הטיימליין המקורי
     stroke(mainLightColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
@@ -211,23 +212,24 @@ function drawPlayerScreen() {
         return; 
     }
 
-    // 2. מנוע המושן שהוחזר: עוקב ומגיב בדינמיות ובזמן אמת למרחק העפעפיים של המשתמש!
-    // ממפה את מרחק העפעפיים (בין 0.012 ל-0.024) לערך גרפי חלק (בין 0 עין עצומה ל-1 עין פתוחה)
-    let targetVisual = map(smoothDist, 0.012, 0.024, 0, 1, true);
-    eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.22); // החלקה עדינה למניעת ריצודים
+    // 2. מנוע מושן מגיב למצמוצים: עוקב חלש ואורגני אחרי תנועת העפעפיים של המשתמש בזמן אמת
+    // ממפה את הנתונים הגולמיים לטווח פתיחה רחב וגדול יותר בדיפולט (עד 60 פיקסלים לגובה)
+    let targetVisual = map(smoothDist, 0.013, 0.024, 0, 1, true);
+    eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.22); 
 
     push();
     translate(centerX, centerY);
 
-    // 3. ציור העין בגודל המקורי האלגנטי (95) עם האנימציה האורגנית
+    // 3. ציור העין המגיבה למצמוץ (ללא הגוף האמורפי)
     stroke(mainLightColor);
     strokeWeight(strokeW);
     noFill();
 
-    let currentEyeHeight = map(eyeVisualProgress, 0, 1, 0, 50);
+    // גובה מקסימלי מוגדל ל-60 כדי שהעין תהיה פתוחה וערנית יותר בדיפולט
+    let currentEyeHeight = map(eyeVisualProgress, 0, 1, 0, 60);
 
-    if (eyeVisualProgress > 0.15) {
-        // עין פתוחה / בתהליך מצמוץ - מציגה מושן חלק ומגיב
+    if (eyeVisualProgress > 0.12) {
+        // העין פתוחה או נמצאת במהלך תנועת מצמוץ חלקה
         arc(0, 0, 95, currentEyeHeight, 0, PI, OPEN);
         arc(0, 0, 95, currentEyeHeight, PI, TWO_PI, OPEN);
         
@@ -242,7 +244,7 @@ function drawPlayerScreen() {
         let pupilSize = map(eyeVisualProgress, 0, 1, 0, 25);
         ellipse(limitedX, limitedY, pupilSize, pupilSize);
     } else {
-        // עין סגורה פוזיטיבית לחלוטין
+        // העין עצומה לחלוטין (כשרואים פוזיטיבית עצימה)
         stroke(mainLightColor);
         line(-47, 0, 47, 0);
         line(-25, 0, -25, 8);
@@ -251,10 +253,10 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // 4. טיפוגרפיה מוגדלת ומשופרת מתחת לעין (שורה אחת, 19px)
+    // 4. החזרת והדגשת הטיפוגרפיה (מוצגת תמיד במסך השני, 19px)
     textAlign(CENTER, CENTER);
     noStroke();
-    textFont("futura-pt", 19); // הגדלה מ-15px ל-19px בשביל נוכחות מקסימלית
+    textFont("futura-pt", 19); 
     textStyle(BOLD); 
 
     let textY = height - 95;
@@ -262,7 +264,6 @@ function drawPlayerScreen() {
     let textW = width - (padding * 2);
 
     fill(mainLightColor);
-    // הוספת מרווח אותיות קל דרך הציור ב-p5
     push();
     drawingContext.letterSpacing = "1px"; 
     text("CLOSE YOUR EYES TO EXPERIENCE TIME", width / 2 - textW / 2, textY, textW, 40);
@@ -303,7 +304,7 @@ function initMediaPipe() {
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true, 
-        minDetectionConfidence: 0.7, // הגברת רף הביטחון לדיוק מירבי
+        minDetectionConfidence: 0.7, 
         minTrackingConfidence: 0.7
     });
 
@@ -321,7 +322,6 @@ function initMediaPipe() {
 }
 
 function onFaceResults(results) {
-    // אם אין זיהוי פנים פוזיטיבי - הכל נעצר והעין פתוחה בדיפולט
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
         eyesClosedRealtime = false;
         eyesConfirmedClosed = false; 
@@ -343,11 +343,11 @@ function onFaceResults(results) {
     
     let currentDist = (leftDist + rightDist) / 2;
 
-    // החלקת נתוני המרחק בזמן אמת כדי לאפשר מושן מצמוץ חלק ללא קפיצות וריצודים
-    smoothDist = lerp(smoothDist, currentDist, 0.25);
+    // החלקת נתוני המרחק בזמן אמת בשביל תנועת המצמוץ הגרפית
+    smoothDist = lerp(smoothDist, currentDist, 0.22);
 
-    // סף החלטי וקשיח לאישור עצימה פוזיטיבית (0.0142)
-    if (leftDist < 0.0142 && rightDist < 0.0142) {
+    // סף זיהוי קשיח ופוזיטיבי לעצימה בלבד (הורד ל-0.0138 להקשחת הטריגר של המוזיקה)
+    if (leftDist < 0.0138 && rightDist < 0.0138) {
         eyesClosedRealtime = true;
     } else {
         eyesClosedRealtime = false;
