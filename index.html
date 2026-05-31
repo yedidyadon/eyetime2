@@ -17,7 +17,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #f4f3ef; /* רקע שמנת-אפרפר חם מהרפרנס */
+            background-color: #2c2543; /* רקע סגול אינדיגו עמוק כהה */
             overflow: hidden;
             font-family: "futura-pt", "Futura", sans-serif;
             -webkit-tap-highlight-color: transparent;
@@ -25,14 +25,14 @@
         canvas { display: block; }
         #webcam { display: none; }
 
-        /* מסך פתיחה מותאם לפלטת הצבעים החדשה */
+        /* מסך פתיחה מותאם להיפוך הצבעים החדש */
         #splash-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: #f4f3ef;
+            background-color: #2c2543;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -42,9 +42,9 @@
         }
         .splash-sub {
             font-family: "futura-pt", "Futura", sans-serif;
-            font-size: 13px;
+            font-size: 13px; /* שורה ראשונה קטנה ועדינה */
             font-weight: normal;
-            color: #2c2543;
+            color: #f4f3ef; /* טקסט לבן-שמנת רך */
             text-align: center;
             letter-spacing: 1px;
             margin-bottom: 8px;
@@ -53,14 +53,14 @@
             font-family: "futura-pt", "Futura", sans-serif;
             font-size: 16px;
             font-weight: bold;
-            color: #2c2543;
+            color: #f4f3ef;
             text-align: center;
             letter-spacing: 1px;
             margin-bottom: 35px;
         }
         #start-btn {
-            background-color: #2c2543; /* סגול אינדיגו כהה מהרפרנס */
-            color: #f4f3ef;
+            background-color: #f4f3ef; /* כפתור שמנת בולט על רקע כהה */
+            color: #2c2543;
             border: none;
             padding: 16px 50px;
             font-family: "futura-pt", "Futura", sans-serif;
@@ -69,7 +69,7 @@
             letter-spacing: 3px;
             border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(44, 37, 67, 0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             outline: none;
             transition: transform 0.1s ease;
         }
@@ -95,7 +95,7 @@ let faceMesh;
 let camera;
 
 let strokeW = 8;
-let brandColor; // הסגול האינדיגו הכהה והעמוק מהרפרנס
+let mainLightColor; // לבן-שמנת עבור כל האלמנטים הגרפיים והקווים
 
 // ניהול מצב חוויה
 let experienceStarted = false;
@@ -104,7 +104,7 @@ let experienceStarted = false;
 let eyesClosedRealtime = false; 
 let eyesConfirmedClosed = false; 
 let lastEyeStateChangeTime = 0;
-let eyeVisualProgress = 0; // משתנה האנימציה העדין שיוחזר לפעולה חלקה
+let eyeVisualProgress = 0; 
 let volHistory = new Array(120).fill(0);
 
 // זיכרון זמן לשיר
@@ -125,7 +125,7 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
     amplitude = new p5.Amplitude(0.85);
-    brandColor = color(44, 37, 67); // צבע הסגול-אינדיגו מהרפרנס שהעלית
+    mainLightColor = color(244, 243, 239); // צבע הלבן-שמנת הרך והיוקרתי מהרפרנס
 }
 
 function startExperience() {
@@ -140,7 +140,7 @@ function startExperience() {
 }
 
 function draw() {
-    background(244, 243, 239); // צבע הרקע שמנת-אפרפר החם מהרפרנס
+    background(44, 37, 67); // רקע סגול אינדיגו עמוק קבוע
 
     if (!experienceStarted) return;
 
@@ -189,8 +189,8 @@ function drawPlayerScreen() {
     let centerX = width / 2;
     let centerY = height / 4 + 20; 
 
-    // 1. ציור קו הטיימליין המקורי והנקי בצבע החדש
-    stroke(brandColor);
+    // 1. ציור קו הטיימליין המקורק והנקי בצבע בהיר
+    stroke(mainLightColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
 
@@ -198,7 +198,7 @@ function drawPlayerScreen() {
     let currentSec = (song && song.isPlaying()) ? song.currentTime() : lastSavedTime;
     let progressX = map(currentSec, 0, durationSec, 0, width);
     
-    fill(brandColor);
+    fill(mainLightColor);
     noStroke();
     ellipse(progressX, timelineY, 18, 18);
 
@@ -208,31 +208,15 @@ function drawPlayerScreen() {
         return; 
     }
 
-    // 2. מנוע מושן עדין והחלטי: lerp רץ רק על המצב המאושר, מונע ריצודים ומשאיר אנימציה חלקה!
+    // 2. מנוע מושן עדין ואיכותי למצמוץ (ללא ריצודים)
     let targetVisual = eyesConfirmedClosed ? 1 : 0;
     eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.18);
 
     push();
     translate(centerX, centerY);
 
-    // *** יצירת גוף פיזי למפלצת העין שמגיב לייב לסאונד ***
-    let currentLevel = amplitude.getLevel();
-    // כשהמוזיקה מנגנת הגוף פועם ומתרחב בעדינות, כשהיא סגורה הוא יציב
-    let pulse = (song && song.isPlaying()) ? map(currentLevel, 0, 0.3, 0, 20) : 0;
-    
-    stroke(brandColor);
-    strokeWeight(4); // קו מתאר מעט דק יותר לגוף בשביל אלגנטיות
-    noFill();
-    
-    // ציור גוף מעוגל ואמורפי מתחת לעין
-    beginShape();
-    vertex(-45, 10);
-    bezierVertex(-70, 70 + pulse, -30, 110 + pulse, 0, 110 + pulse);
-    bezierVertex(30, 110 + pulse, 70, 70 + pulse, 45, 10);
-    endShape();
-
-    // 3. ציור העין בגודל המקורי (95) עם האנימציה שהוחזרה
-    stroke(brandColor);
+    // 3. ציור העין בלבד (העיגול/גוף של המפלצת בוטל לחלוטין) בגודל המקורי (95)
+    stroke(mainLightColor);
     strokeWeight(strokeW);
     noFill();
 
@@ -249,13 +233,13 @@ function drawPlayerScreen() {
         let limitedX = constrain(pupilOffset.x, -10, 10);
         let limitedY = constrain(pupilOffset.y, -6, 6);
         
-        fill(brandColor);
+        fill(mainLightColor);
         noStroke();
         let pupilSize = map(eyeVisualProgress, 0, 1, 25, 0);
         ellipse(limitedX, limitedY, pupilSize, pupilSize);
     } else {
         // עין עצומה - מושן חלק ומלא
-        stroke(brandColor);
+        stroke(mainLightColor);
         line(-47, 0, 47, 0);
         line(-25, 0, -25, 8);
         line(0, 0, 0, 10);
@@ -263,7 +247,7 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // 4. ציור הטיפוגרפיה
+    // 4. ציור הטיפוגרפיה הבהירה בשורה אחת
     textAlign(CENTER, CENTER);
     noStroke();
     textFont("futura-pt", 15);
@@ -273,7 +257,7 @@ function drawPlayerScreen() {
     let padding = 30; 
     let textW = width - (padding * 2);
 
-    fill(brandColor);
+    fill(mainLightColor);
     text("CLOSE YOUR EYES TO EXPERIENCE TIME", width / 2 - textW / 2, textY, textW, 40);
 }
 
@@ -287,7 +271,7 @@ function drawLinearMonitor(baselineY) {
 
     push();
     translate(0, baselineY);
-    stroke(brandColor); 
+    stroke(mainLightColor); /* קו מוניטור בהיר ונקי */
     strokeWeight(4);
     noFill();
     
