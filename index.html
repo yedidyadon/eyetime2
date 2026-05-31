@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Look and Listen Ultimate Chrome Fix</title>
+    <title>Look and Listen Pro Precision</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
@@ -25,7 +25,7 @@
         canvas { display: block; }
         #webcam { display: none; }
 
-        /* מסך פתיחה אלגנטי שעוקף את החסימה של כרום */
+        /* מסך פתיחה אלגנטי שעובד ב-100% בכרום */
         #splash-screen {
             position: fixed;
             top: 0;
@@ -34,27 +34,30 @@
             height: 100vh;
             background-color: #ffffff;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
         }
         #start-btn {
-            background-color: #663399; /* הסגול הדיגיטלי שלך */
+            background-color: #663399;
             color: #ffffff;
             border: none;
-            padding: 16px 45px;
+            padding: 16px 50px;
             font-family: "futura-pt", "Futura", sans-serif;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             border-radius: 30px;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(102, 51, 153, 0.2);
             outline: none;
+            margin-top: 40px;
+            transition: transform 0.1s ease;
         }
         #start-btn:active {
-            transform: scale(0.97);
+            transform: scale(0.96);
         }
     </style>
 </head>
@@ -75,27 +78,27 @@ let camera;
 let strokeW = 8;
 let purpleColor;
 
-// לוגיקת מצב חוויה (מתחיל רק אחרי לחיצה על הכפתור)
+// מצבי מערכת
 let experienceStarted = false;
 
-// מנוע פילטר למניעת לאגים במצמוץ
+// פילטר מצמוץ למניעת לאגים
 let eyesClosedRealtime = false; 
 let eyesConfirmedClosed = false; 
 let lastEyeStateChangeTime = 0;
 let eyeVisualProgress = 0;
 let volHistory = new Array(120).fill(0);
 
-// זיכרון זמן לשיר
+// זיכרון זמן השיר
 let lastSavedTime = 0;
 
-// מנוע אישון דינמי ומדויק
+// מנוע אישון רגיש ומכויול
 let pupilOffset = { x: 0, y: 0 };
 let targetPupil = { x: 0, y: 0 };
 
 function preload() {
     soundFormats('mp3');
     song = loadSound('song.mp3', 
-        () => console.log("Audio Loaded"), 
+        () => console.log("Audio Active"), 
         () => console.log("Backup audio active")
     );
 }
@@ -104,35 +107,45 @@ function setup() {
     createCanvas(windowWidth, windowHeight);
     amplitude = new p5.Amplitude(0.85);
     purpleColor = color(102, 51, 153);
+    
+    // הפעלת MediaPipe מיד ברקע כדי לאפשר גם זיהוי מצמוץ להפעלה
+    initMediaPipe();
 }
 
-// פונקציה שמופעלת ברגע שהמשתמש לוחץ על כפתור ה-START
+// פונקציית הפעלה רשמית (בלחיצה או במצמוץ)
 function startExperience() {
-    // 1. הפעלת האודיו באופן רשמי באישור הדפדפן
-    userStartAudio(); 
+    if (experienceStarted) return;
     
-    // 2. העלמת מסך הפתיחה באנימציה חלקלקה
+    userStartAudio(); // אישור סאונד מיידי לדפדפן כרום
+    experienceStarted = true;
+    
     let splash = document.getElementById('splash-screen');
     splash.style.opacity = '0';
-    setTimeout(() => {
-        splash.style.display = 'none';
-        experienceStarted = true;
-        // 3. הדלקת המצלמה וה-AI רק עכשיו
-        initMediaPipe();
-    }, 500);
+    splash.style.visibility = 'hidden';
 }
 
 function draw() {
     background(255); 
 
-    // אם המשתמש עוד לא לוחץ על START, לא מריצים כלום
-    if (!experienceStarted) return;
-
     updateEyeStatus(); 
+    
+    if (!experienceStarted) {
+        // מסך פתיחה: מציג את העין הגרפית פתוחה ויציבה במרכז מעל הכפתור
+        drawSplashEye();
+        
+        // פיצ'ר בונוס: אם המשתמש ממצמץ/עוצם עיניים מול המסך פתיחה - זה מפעיל את החוויה!
+        if (eyesClosedRealtime) {
+            startExperience();
+        }
+        return;
+    }
+
+    // הנגן הראשי (רץ רק אחרי הפעלה)
     handleMusicLogic();
     drawPlayerScreen();
 }
 
+// פילטר השהיית מצמוצים
 function updateEyeStatus() {
     let now = millis();
     if (eyesClosedRealtime !== eyesConfirmedClosed) {
@@ -162,12 +175,38 @@ function handleMusicLogic() {
     }
 }
 
+// ציור העין בלבד במרכז מסך הפתיחה
+function drawSplashEye() {
+    let centerX = width / 2;
+    let centerY = height / 2 - 60; // ממוקם מעל כפתור ה-START
+
+    stroke(purpleColor);
+    strokeWeight(strokeW);
+    noFill();
+
+    push();
+    translate(centerX, centerY);
+    // עין פתוחה לרווחה ויציבה במסך הבית
+    arc(0, 0, 95, 50, 0, PI, OPEN);
+    arc(0, 0, 95, 50, PI, TWO_PI, OPEN);
+    
+    // האישון זז ברגישות גם במסך הבית
+    pupilOffset.x = lerp(pupilOffset.x, targetPupil.x, 0.2);
+    pupilOffset.y = lerp(pupilOffset.y, targetPupil.y, 0.2);
+    
+    fill(purpleColor);
+    noStroke();
+    ellipse(pupilOffset.x, pupilOffset.y, 25, 25);
+    pop();
+}
+
+// ציור מסך הנגן הראשי
 function drawPlayerScreen() {
     let timelineY = height / 2;
     let centerX = width / 2;
     let centerY = height / 4 + 20;
 
-    // קו טיימליין סגול עבה
+    // קו טיימליין סגול
     stroke(purpleColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
@@ -197,11 +236,12 @@ function drawPlayerScreen() {
         arc(0, 0, 95, currentEyeHeight, 0, PI, OPEN);
         arc(0, 0, 95, currentEyeHeight, PI, TWO_PI, OPEN);
         
+        // החלקת תנועה לאישון הגרפי
         pupilOffset.x = lerp(pupilOffset.x, targetPupil.x, 0.2);
         pupilOffset.y = lerp(pupilOffset.y, targetPupil.y, 0.2);
         
-        let limitedX = constrain(pupilOffset.x, -14, 14);
-        let limitedY = constrain(pupilOffset.y, -6, 6);
+        let limitedX = constrain(pupilOffset.x, -16, 16);
+        let limitedY = constrain(pupilOffset.y, -7, 7);
         
         fill(purpleColor);
         noStroke();
@@ -216,21 +256,22 @@ function drawPlayerScreen() {
     }
     pop();
 
+    // טיפוגרפיה משופרת: משקל כבד (BOLD), ללא נקודות בסוף
     textAlign(CENTER, CENTER);
     noStroke();
-    textFont("futura-pt", 14);
-    textStyle(NORMAL);
+    textFont("futura-pt", 15);
+    textStyle(BOLD); // משקל כבד יותר
 
     let textY = height - 90;
     let padding = 45; 
     let textW = width - (padding * 2);
 
     if (eyesConfirmedClosed) {
-        fill(purpleColor, 130);
-        text("KEEP THEM CLOSED. TIME IS FLOWING.", width / 2 - textW / 2, textY, textW, 50);
+        fill(purpleColor, 140);
+        text("KEEP THEM CLOSED. TIME IS FLOWING", width / 2 - textW / 2, textY, textW, 50);
     } else {
         fill(purpleColor);
-        text("LOOKING AT THE SCREEN FREEZES TIME.\nCLOSE YOUR EYES.", width / 2 - textW / 2, textY, textW, 50);
+        text("LOOKING AT THE SCREEN FREEZES TIME\nCLOSE YOUR EYES", width / 2 - textW / 2, textY, textW, 50);
     }
 }
 
@@ -267,8 +308,8 @@ function initMediaPipe() {
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true, 
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
+        minDetectionConfidence: 0.5, // הגברת רגישות זיהוי פנים
+        minTrackingConfidence: 0.5
     });
 
     faceMesh.onResults(onFaceResults);
@@ -281,13 +322,13 @@ function initMediaPipe() {
         height: 480
     });
     
-    camera.start().catch(err => console.log("Camera starting...", err));
+    camera.start().catch(err => console.log("Camera sync...", err));
 }
 
 function onFaceResults(results) {
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
         eyesClosedRealtime = false;
-        eyesConfirmedClosed = false; 
+        if (experienceStarted) eyesConfirmedClosed = false; 
         targetPupil.x = 0;
         targetPupil.y = 0;
         return;
@@ -303,11 +344,12 @@ function onFaceResults(results) {
     let leftDist = dist(leftTop.x, leftTop.y, leftBottom.x, leftBottom.y);
     let rightDist = dist(rightTop.x, rightTop.y, rightBottom.x, rightBottom.y);
 
-    if (leftDist < 0.0165 && rightDist < 0.0165) {
+    if (leftDist < 0.017 && rightDist < 0.017) {
         eyesClosedRealtime = true;
     } else {
         eyesClosedRealtime = false;
         
+        // מנוע אישון מיושר ורגיש במיוחד המונע הינעלות בצד ימין (מתוקן מירור של כרום)
         let irisCenter = landmarks[468]; 
         let eyeLeftEdge = landmarks[33]; 
         let eyeRightEdge = landmarks[133]; 
@@ -315,6 +357,7 @@ function onFaceResults(results) {
         if (irisCenter && eyeLeftEdge && eyeRightEdge) {
             let totalEyeWidth = dist(eyeLeftEdge.x, eyeLeftEdge.y, eyeRightEdge.x, eyeRightEdge.y);
             let irisPosFromLeft = dist(eyeLeftEdge.x, eyeLeftEdge.y, irisCenter.x, irisCenter.y);
+            
             let relativeX = irisPosFromLeft / totalEyeWidth;
             let normalizedX = relativeX - 0.5; 
             
@@ -325,8 +368,9 @@ function onFaceResults(results) {
             let relativeY = irisPosFromTop / totalEyeHeight;
             let normalizedY = relativeY - 0.5;
 
-            targetPupil.x = map(normalizedX, -0.12, 0.12, 18, -18, true);
-            targetPupil.y = map(normalizedY, -0.15, 0.15, -6, 6, true);
+            // כיול מחדש קשיח: היפוך מלא (מירור) והכפלת הרגישות פי 1.8 כדי שיגיב לכל פינה במסך
+            targetPupil.x = map(normalizedX, -0.10, 0.10, -22, 22, true);
+            targetPupil.y = map(normalizedY, -0.12, 0.12, -8, 8, true);
         } else {
             targetPupil.x = 0;
             targetPupil.y = 0;
