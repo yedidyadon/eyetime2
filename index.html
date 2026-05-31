@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Look and Listen</title>
+    <title>Look and Listen Pro</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
@@ -11,14 +11,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
+    <link rel="stylesheet" href="https://use.typekit.net/uyx6llh.css">
+
     <style>
-        @import url('https://fonts.cdnfonts.com/css/futura-pt');
         body {
             margin: 0;
             padding: 0;
             background-color: #ffffff;
             overflow: hidden;
-            font-family: 'Futura PT', 'Futura', sans-serif;
+            font-family: "futura-pt", "Futura", sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
         canvas { display: block; }
@@ -35,22 +36,25 @@ let amplitude;
 let faceMesh;
 let camera;
 
-// עיצוב סגול עובי 8
+// הגדרות עיצוב אחידות (עובי קו 8)
 let strokeW = 8;
 let purpleColor;
 
-// לוגיקת עיניים ומבט
+// לוגיקת עיניים ומניעת לאגים במצמוצים (Debounce)
 let eyesClosedRealtime = false; 
+let eyesConfirmedClosed = false; // המצב הסופי שמשפיע על המוזיקה
+let lastEyeStateChangeTime = 0;
 let eyeVisualProgress = 0;
 let volHistory = new Array(120).fill(0);
 
-// מיקום האישון (זז בלייב)
+// מנוע אישון משופר ומרוסן (Micro-Movement)
 let pupilOffset = { x: 0, y: 0 };
+let targetPupil = { x: 0, y: 0 };
 
 function preload() {
     soundFormats('mp3');
     song = loadSound('song.mp3', 
-        () => console.log("Audio Loaded"), 
+        () => console.log("Audio Loaded Successfully"), 
         () => console.log("Backup audio active")
     );
 }
@@ -58,27 +62,41 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
     amplitude = new p5.Amplitude(0.85);
-    purpleColor = color(102, 51, 153); // סגול עמוק ונקי
+    purpleColor = color(102, 51, 153); // סגול דיגיטלי נקי
     
-    // אתחול מיידי של המצלמה וה-AI ישר בכניסה לאתר
+    // אתחול אוטומטי ובקשת אישור מצלמה מיד בכניסה לאתר
     initMediaPipe();
 }
 
 function draw() {
     background(255); 
 
+    updateEyeStatus(); // מנוע פילטר מצמוצים
     handleMusicLogic();
     drawPlayerScreen();
 }
 
-// === הפעלה אוטומטית של המוזיקה על סמך עצימת עיניים ===
+// === מנוע פילטר חכם: מבחין בין מצמוץ מהיר לעצימה ממושכת ===
+function updateEyeStatus() {
+    let now = millis();
+    
+    if (eyesClosedRealtime !== eyesConfirmedClosed) {
+        // אם המצלמה מזהה שינוי (למשל סגרת עין), נמתין 250 מילישניות כדי לוודא שזה לא סתם מצמוץ
+        if (now - lastEyeStateChangeTime > 250) {
+            eyesConfirmedClosed = eyesClosedRealtime;
+        }
+    } else {
+        lastEyeStateChangeTime = now;
+    }
+}
+
+// === הפעלה/עצירה חלקה של השיר ללא קפיצות ולאגים ===
 function handleMusicLogic() {
     if (!song || !song.isLoaded()) return;
 
-    // הפעלת האודיו קונטקסט של הדפדפן בצורה אוטומטית ברגע שיש אינטראקציה של המצלמה
-    userStartAudio();
+    userStartAudio(); // הפעלה אוטומטית של סאונד בדפדפן
 
-    if (eyesClosedRealtime) {
+    if (eyesConfirmedClosed) {
         if (!song.isPlaying()) {
             song.play();
         }
@@ -89,13 +107,13 @@ function handleMusicLogic() {
     }
 }
 
-// === מסך האפליקציה הראשי ===
+// === מסך הנגן הראשי ===
 function drawPlayerScreen() {
     let timelineY = height / 2;
     let centerX = width / 2;
     let centerY = height / 4 + 20;
 
-    // 1. קו טיימליין סגול עבה (עובי 8)
+    // 1. קו טיימליין סגול (עובי קו 8)
     stroke(purpleColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
@@ -111,7 +129,8 @@ function drawPlayerScreen() {
     // 2. גרף מוניטור דציבלים סגול
     drawLinearMonitor(timelineY);
 
-    // 3. אנימציית העין והאישון הזז לפי המבט
+    // 3. אנימציית העין והאישון הרגיש והמרוסן
+    // האנימציה הגרפית מגיבה ישר ל-Realtime כדי שהעין תיסגר מהר, אבל הסאונד מוגן מלאגים
     eyeVisualProgress = lerp(eyeVisualProgress, eyesClosedRealtime ? 1 : 0, 0.25);
 
     stroke(purpleColor);
@@ -124,19 +143,21 @@ function drawPlayerScreen() {
     let currentEyeHeight = map(eyeVisualProgress, 0, 1, 50, 0);
 
     if (eyeVisualProgress < 0.9) {
-        // עין פתוחה - קשתות חיצוניות (עובי 8)
+        // עין פתוחה - עובי 8
         arc(0, 0, 95, currentEyeHeight, 0, PI, OPEN);
         arc(0, 0, 95, currentEyeHeight, PI, TWO_PI, OPEN);
         
-        // אישון זז - מיקומו נקבע על ידי ה-Pupil Tracking של המצלמה
+        // החלקת תנועת האישון בזמן אמת
+        pupilOffset.x = lerp(pupilOffset.x, targetPupil.x, 0.15);
+        pupilOffset.y = lerp(pupilOffset.y, targetPupil.y, 0.15);
+        
+        // הגבלה מקסימלית בתוך מרכז האישון שלא יברח
+        let limitedX = constrain(pupilOffset.x, -12, 12);
+        let limitedY = constrain(pupilOffset.y, -5, 5);
+        
         fill(purpleColor);
         noStroke();
         let pupilSize = map(eyeVisualProgress, 0, 1, 25, 0);
-        
-        // הגבלת התנועה של האישון שלא ייצא מגבולות האייקון
-        let limitedX = constrain(pupilOffset.x, -20, 20);
-        let limitedY = constrain(pupilOffset.y, -8, 8);
-        
         ellipse(limitedX, limitedY, pupilSize, pupilSize);
     } else {
         // עין עצומה - קו ישר עם ריסים עדינים
@@ -148,16 +169,24 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // 4. טקסט הדרכה מינימליסטי בפונט פוטורה
-    textAlign(CENTER);
+    // 4. טיפוגרפיה איכותית ומרוחקת מהשוליים (Futura Pt)
+    textAlign(CENTER, CENTER);
     noStroke();
-    fill(purpleColor, 140);
-    textSize(13);
-    if (eyesClosedRealtime) {
-        text("KEEP THEM CLOSED. TIME IS FLOWING.", width / 2, height - 80);
+    
+    textFont("futura-pt", 14);
+    textStyle(NORMAL);
+
+    let textY = height - 90;
+    let padding = 45; // שוליים רחבים ומובטחים מהצדדים
+    let textW = width - (padding * 2);
+
+    if (eyesConfirmedClosed) {
+        fill(purpleColor, 130);
+        text("KEEP THEM CLOSED. TIME IS FLOWING.", width / 2 - textW / 2, textY, textW, 50);
     } else {
         fill(purpleColor);
-        text("LOOKING AT THE SCREEN FREEZES TIME. CLOSE YOUR EYES.", width / 2, height - 80);
+        // ירידת שורה מובנית למניעת נגיעה בקצוות המסך
+        text("LOOKING AT THE SCREEN FREEZES TIME.\nCLOSE YOUR EYES.", width / 2 - textW / 2, textY, textW, 50);
     }
 }
 
@@ -183,7 +212,7 @@ function drawLinearMonitor(baselineY) {
     pop();
 }
 
-// === אתחול ומעקב פנים + אישונים (MediaPipe Face Mesh) ===
+// === מנוע הבינה המלאכותית (MediaPipe Face Mesh) ===
 function initMediaPipe() {
     const videoElement = document.getElementById('webcam');
 
@@ -193,7 +222,7 @@ function initMediaPipe() {
 
     faceMesh.setOptions({
         maxNumFaces: 1,
-        refineLandmarks: true, // חובה: מפעיל מעקב קשתית ואישונים (Iris)
+        refineLandmarks: true, 
         minDetectionConfidence: 0.6,
         minTrackingConfidence: 0.6
     });
@@ -208,19 +237,21 @@ function initMediaPipe() {
         height: 480
     });
     
-    // הפעלה אוטומטית של המצלמה מייד עם טעינת הדף
-    camera.start().catch(err => console.log("Camera access denied or waiting for user", err));
+    // הפעלת מצלמה מיידית בטעינת האתר
+    camera.start().catch(err => console.log("Waiting for camera permission...", err));
 }
 
 function onFaceResults(results) {
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
         eyesClosedRealtime = false;
+        targetPupil.x = 0;
+        targetPupil.y = 0;
         return;
     }
 
     const landmarks = results.multiFaceLandmarks[0];
 
-    // 1. חישוב עצימת עיניים (מרחק עפעפיים)
+    // 1. קריאת מרחק עפעפיים
     let leftTop = landmarks[159];
     let leftBottom = landmarks[145];
     let rightTop = landmarks[386];
@@ -229,25 +260,26 @@ function onFaceResults(results) {
     let leftDist = dist(leftTop.x, leftTop.y, leftBottom.x, leftBottom.y);
     let rightDist = dist(rightTop.x, rightTop.y, rightBottom.x, rightBottom.y);
 
-    if (leftDist < 0.016 && rightDist < 0.016) {
+    // קביעת מצב העין בזמן אמת
+    if (leftDist < 0.0165 && rightDist < 0.0165) {
         eyesClosedRealtime = true;
     } else {
         eyesClosedRealtime = false;
         
-        // 2. חישוב כיוון המבט (Eye Tracking) בזמן אמת
-        // נקודת מרכז האישון הימני (נקודה 468) ומרכז העין (נקודה 473) ב-MediaPipe
+        // 2. מנוע מעקב אישון עדין ומרוסן במיוחד (Micro-Movement)
         let irisCenter = landmarks[468]; 
-        let eyeCenter = landmarks[473]; 
-
+        let eyeCenter = landmarks[473];  
+        
         if (irisCenter && eyeCenter) {
-            // חישוב ההפרש בין מרכז האישון למרכז העין הפיזית שלך
-            // מכיוון שהקואורדינטות הן בין 0 ל-1, אנחנו מכפילים כדי לקבל ערך פיקסלים הגיוני לתנועה
-            let dx = (irisCenter.x - eyeCenter.x) * 1200;
-            let dy = (irisCenter.y - eyeCenter.y) * 1200;
+            let rawDX = (irisCenter.x - eyeCenter.x);
+            let rawDY = (irisCenter.y - eyeCenter.y);
             
-            // החלקה (Lerp) של תנועת האישון על המסך שלא יקפוץ ברעידות קטנות
-            pupilOffset.x = lerp(pupilOffset.x, -dx, 0.3); // היפוך ציר ה-X בגלל מירור של המצלמה
-            pupilOffset.y = lerp(pupilOffset.y, dy, 0.3);
+            // מיפוי מחדש עדין במיוחד כדי שתנועה קטנה על גבי המסך תזיז את האישון ברכות ולא תנעל אותו
+            targetPupil.x = map(rawDX, 0.008, -0.008, -14, 14, true);
+            targetPupil.y = map(rawDY, -0.007, 0.007, -6, 6, true);
+        } else {
+            targetPupil.x = 0;
+            targetPupil.y = 0;
         }
     }
 }
