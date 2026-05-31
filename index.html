@@ -17,7 +17,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #2c2543; /* רקע סגול אינדיגו עמוק מהרפרנס */
+            background-color: #2c2543; /* רקע סגול אינדיגו עמוק כהה */
             overflow: hidden;
             font-family: "futura-pt", "Futura", sans-serif;
             -webkit-tap-highlight-color: transparent;
@@ -104,7 +104,7 @@ let experienceStarted = false;
 let eyesClosedRealtime = false; 
 let eyesConfirmedClosed = false; 
 let lastEyeStateChangeTime = 0;
-let eyeVisualProgress = 1; // 1 = פתוח לחלוטין בדיפולט
+let eyeVisualProgress = 0; // חזרה למשתנה האנימציה המקורי
 let smoothDist = 0.025; 
 let volHistory = new Array(120).fill(0);
 
@@ -155,11 +155,10 @@ function updateEyeStatus() {
     
     if (eyesClosedRealtime !== eyesConfirmedClosed) {
         if (!eyesClosedRealtime) {
-            // אם המצלמה לא רואה עצימה פוזיטיבית מוחלטת - יציאה מיידית
             eyesConfirmedClosed = false;
             lastEyeStateChangeTime = now;
         } else if (now - lastEyeStateChangeTime > 280) { 
-            // רק עצימה אמיתית, ממושכת וכבדה (ולא מצמוץ חולף) תפעיל את הלוגיקה
+            // רק עצימה אמיתית ומוחלטת (לא מצמוץ) מאשרת את המוזיקה
             eyesConfirmedClosed = true;
         }
     } else {
@@ -170,7 +169,6 @@ function updateEyeStatus() {
 function handleMusicLogic() {
     if (!song || !song.isLoaded()) return;
 
-    // המוזיקה פועלת פוזיטיבית רק בעצימה מלאה, ולא במצמוצים
     if (eyesConfirmedClosed) {
         if (!song.isPlaying()) {
             song.jump(lastSavedTime); 
@@ -193,7 +191,7 @@ function drawPlayerScreen() {
     let centerX = width / 2;
     let centerY = height / 4 + 20; 
 
-    // 1. ציור קו הטיימליין המקורי
+    // 1. ציור קו הטיימליין
     stroke(mainLightColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
@@ -212,24 +210,23 @@ function drawPlayerScreen() {
         return; 
     }
 
-    // 2. מנוע מושן מגיב למצמוצים: עוקב חלש ואורגני אחרי תנועת העפעפיים של המשתמש בזמן אמת
-    // ממפה את הנתונים הגולמיים לטווח פתיחה רחב וגדול יותר בדיפולט (עד 60 פיקסלים לגובה)
-    let targetVisual = map(smoothDist, 0.013, 0.024, 0, 1, true);
-    eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.22); 
+    // 2. החזרת מנוע התגובתיות המקורי והחלק של המצמוץ בזמן אמת
+    let targetVisual = eyesConfirmedClosed ? 1 : 0;
+    eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.18); 
 
     push();
     translate(centerX, centerY);
 
-    // 3. ציור העין המגיבה למצמוץ (ללא הגוף האמורפי)
+    // 3. ציור העין בגודל ובפרופורציות המקוריות והמדויקות (95)
     stroke(mainLightColor);
     strokeWeight(strokeW);
     noFill();
 
-    // גובה מקסימלי מוגדל ל-60 כדי שהעין תהיה פתוחה וערנית יותר בדיפולט
-    let currentEyeHeight = map(eyeVisualProgress, 0, 1, 0, 60);
+    // חזרה לגובה המקורי והחלטי (50 פתוח לרווחה בדיפולט, משתנה בצורה חלקה לפי המצמוץ)
+    let currentEyeHeight = map(eyeVisualProgress, 0, 1, 50, 0);
 
-    if (eyeVisualProgress > 0.12) {
-        // העין פתוחה או נמצאת במהלך תנועת מצמוץ חלקה
+    if (eyeVisualProgress < 0.88) {
+        // עין פתוחה או מגיבה למצמוץ דינמי
         arc(0, 0, 95, currentEyeHeight, 0, PI, OPEN);
         arc(0, 0, 95, currentEyeHeight, PI, TWO_PI, OPEN);
         
@@ -241,10 +238,10 @@ function drawPlayerScreen() {
         
         fill(mainLightColor);
         noStroke();
-        let pupilSize = map(eyeVisualProgress, 0, 1, 0, 25);
+        let pupilSize = map(eyeVisualProgress, 0, 1, 25, 0);
         ellipse(limitedX, limitedY, pupilSize, pupilSize);
     } else {
-        // העין עצומה לחלוטין (כשרואים פוזיטיבית עצימה)
+        // עין עצומה פוזיטיבית
         stroke(mainLightColor);
         line(-47, 0, 47, 0);
         line(-25, 0, -25, 8);
@@ -253,20 +250,20 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // 4. החזרת והדגשת הטיפוגרפיה (מוצגת תמיד במסך השני, 19px)
-    textAlign(CENTER, CENTER);
+    // 4. תיקון מיקום והחזרת הטיפוגרפיה (ממוקמת בצורה בטוחה ויחסית מתחת לטיימליין)
+    textAlign(CENTER, TOP);
     noStroke();
     textFont("futura-pt", 19); 
     textStyle(BOLD); 
 
-    let textY = height - 95;
+    let textY = timelineY + 120; // מיקום יחסי קבוע ומרווח מתחת לטיימליין כדי למנוע חיתוך במסכים
     let padding = 20; 
     let textW = width - (padding * 2);
 
     fill(mainLightColor);
     push();
     drawingContext.letterSpacing = "1px"; 
-    text("CLOSE YOUR EYES TO EXPERIENCE TIME", width / 2 - textW / 2, textY, textW, 40);
+    text("CLOSE YOUR EYES TO EXPERIENCE TIME", width / 2 - textW / 2, textY, textW);
     pop();
 }
 
@@ -325,7 +322,6 @@ function onFaceResults(results) {
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
         eyesClosedRealtime = false;
         eyesConfirmedClosed = false; 
-        smoothDist = 0.025;
         targetPupil.x = 0;
         targetPupil.y = 0;
         return;
@@ -340,14 +336,9 @@ function onFaceResults(results) {
 
     let leftDist = dist(leftTop.x, leftTop.y, leftBottom.x, leftBottom.y);
     let rightDist = dist(rightTop.x, rightTop.y, rightBottom.x, rightBottom.y);
-    
-    let currentDist = (leftDist + rightDist) / 2;
 
-    // החלקת נתוני המרחק בזמן אמת בשביל תנועת המצמוץ הגרפית
-    smoothDist = lerp(smoothDist, currentDist, 0.22);
-
-    // סף זיהוי קשיח ופוזיטיבי לעצימה בלבד (הורד ל-0.0138 להקשחת הטריגר של המוזיקה)
-    if (leftDist < 0.0138 && rightDist < 0.0138) {
+    // סף זיהוי קשיח ופוזיטיבי לעצימה בלבד
+    if (leftDist < 0.0140 && rightDist < 0.0140) {
         eyesClosedRealtime = true;
     } else {
         eyesClosedRealtime = false;
