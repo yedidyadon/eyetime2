@@ -17,7 +17,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #2c2543; /* רקע סגול אינדיגו עמוק מהרפרנס */
+            background-color: #2c2543; /* רקע סגול אינדיגו עמוק */
             overflow: hidden;
             font-family: "futura-pt", "Futura", sans-serif;
             -webkit-tap-highlight-color: transparent;
@@ -42,7 +42,7 @@
         }
         .splash-sub {
             font-family: "futura-pt", "Futura", sans-serif;
-            font-size: 13px; /* נשאר קטן, עדין ודק */
+            font-size: 13px; /* עדין וקטן */
             font-weight: normal;
             color: #f4f3ef;
             text-align: center;
@@ -95,12 +95,12 @@ let faceMesh;
 let camera;
 
 let strokeW = 8;
-let mainLightColor; // הצבע הבהיר של האלמנטים על גבי הרקע הסגול
+let mainLightColor; 
 
 // ניהול מצב חוויה
 let experienceStarted = false;
 
-// מנוע פילטר למניעת לאגים במצמוץ (מהקוד המקור שלך)
+// מנוע פילטר למניעת לאגים במצמוץ
 let eyesClosedRealtime = false; 
 let eyesConfirmedClosed = false; 
 let lastEyeStateChangeTime = 0;
@@ -110,7 +110,7 @@ let volHistory = new Array(120).fill(0);
 // זיכרון זמן לשיר
 let lastSavedTime = 0;
 
-// מנוע אישון דינמי ומדויק (מהקוד המקור שלך)
+// מנוע אישון דינמי ומדויק
 let pupilOffset = { x: 0, y: 0 };
 let targetPupil = { x: 0, y: 0 };
 
@@ -125,7 +125,7 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
     amplitude = new p5.Amplitude(0.85);
-    mainLightColor = color(244, 243, 239); // צבע לבן-שמנת עדין ויוקרתי
+    mainLightColor = color(244, 243, 239); // צבע הלבן-שמנת היוקרתי
 }
 
 function startExperience() {
@@ -140,7 +140,7 @@ function startExperience() {
 }
 
 function draw() {
-    background(44, 37, 67); // רקע סגול אינדיגו עמוק קבוע
+    background(44, 37, 67); 
 
     if (!experienceStarted) return;
 
@@ -149,7 +149,7 @@ function draw() {
     drawPlayerScreen();
 }
 
-// פילטר שמפריד בין מצמוץ טבעי מהיר לעצימה מכוונת (מהקוד המקור שלך)
+// פילטר שמפריד בין מצמוץ טבעי מהיר לעצימה מכוונת
 function updateEyeStatus() {
     let now = millis();
     if (eyesClosedRealtime !== eyesConfirmedClosed) {
@@ -161,7 +161,7 @@ function updateEyeStatus() {
     }
 }
 
-// ניהול נגינה קשיח (מהקוד המקור שלך)
+// ניהול נגינה קשיח
 function handleMusicLogic() {
     if (!song || !song.isLoaded()) return;
 
@@ -187,7 +187,7 @@ function drawPlayerScreen() {
     let centerX = width / 2;
     let centerY = height / 4 + 20;
 
-    // קו טיימליין בהיר ונקי
+    // קו טיימליין בהיר
     stroke(mainLightColor);
     strokeWeight(strokeW);
     line(0, timelineY, width, timelineY);
@@ -206,7 +206,7 @@ function drawPlayerScreen() {
         return; 
     }
 
-    // אנימציה גרפית חלקה של העין (המקורית והתגובתית שלך)
+    // אנימציה גרפית חלקה של העין (המקורית והתגובתית)
     let targetVisual = eyesClosedRealtime ? 1 : 0;
     eyeVisualProgress = lerp(eyeVisualProgress, targetVisual, 0.25);
 
@@ -243,23 +243,21 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // טיפוגרפיה - חזרה לגודל הקודם והעדין (14px) ומיקום יחסי בטוח
+    // טיפוגרפיה - חזרה למשפט הקבוע, משקל Bold וגודל 14px מינימליסטי בפוטורה
     textAlign(CENTER, TOP);
     noStroke();
-    textFont("futura-pt", 14); // חזר ל-14px קטן ומינימליסטי
-    textStyle(NORMAL);
+    textFont("futura-pt", 14); 
+    textStyle(BOLD); // משקל בולד נקי לפוטורה
 
-    let textY = timelineY + 120; // ממוקם במרחק אלגנטי מתחת לטיימליין
+    let textY = timelineY + 120; // מיקום בטוח ואלגנטי מתחת לטיימליין
     let padding = 45; 
     let textW = width - (padding * 2);
 
-    if (eyesConfirmedClosed) {
-        fill(mainLightColor, 130);
-        text("KEEP THEM CLOSED. TIME IS FLOWING.", width / 2 - textW / 2, textY, textW, 50);
-    } else {
-        fill(mainLightColor);
-        text("LOOKING AT THE SCREEN FREEZES TIME.\nCLOSE YOUR EYES.", width / 2 - textW / 2, textY, textW, 50);
-    }
+    fill(mainLightColor);
+    push();
+    drawingContext.letterSpacing = "1px"; 
+    text("CLOSE YOUR EYES TO EXPERIENCE TIME", width / 2 - textW / 2, textY, textW);
+    pop();
 }
 
 function drawLinearMonitor(baselineY) {
