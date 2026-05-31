@@ -24,9 +24,59 @@
         }
         canvas { display: block; }
         #webcam { display: none; }
+
+        /* מסך פתיחה אלגנטי לתיקון כרום */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        #splash-text {
+            font-family: "futura-pt", "Futura", sans-serif;
+            font-size: 15px;
+            font-weight: bold;
+            color: #663399;
+            text-align: center;
+            line-height: 1.5;
+            letter-spacing: 1px;
+            margin-bottom: 30px;
+            padding: 0 30px;
+        }
+        #start-btn {
+            background-color: #663399;
+            color: #ffffff;
+            border: none;
+            padding: 16px 50px;
+            font-family: "futura-pt", "Futura", sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 51, 153, 0.2);
+            outline: none;
+            transition: transform 0.1s ease;
+        }
+        #start-btn:active {
+            transform: scale(0.96);
+        }
     </style>
 </head>
 <body>
+
+<div id="splash-screen">
+    <div id="splash-text">ALLOW CAMERA ACCESS AND PRESS START<br>CLOSE YOUR EYES TO UNFREEZE THE MUSIC</div>
+    <button id="start-btn" onclick="startExperience()">START</button>
+</div>
 
 <video id="webcam" autoplay playsinline></video>
 
@@ -38,6 +88,9 @@ let camera;
 
 let strokeW = 8;
 let purpleColor;
+
+// ניהול מצב חוויה
+let experienceStarted = false;
 
 // מנוע פילטר למניעת לאגים במצמוץ
 let eyesClosedRealtime = false; 
@@ -65,24 +118,43 @@ function setup() {
     createCanvas(windowWidth, windowHeight);
     amplitude = new p5.Amplitude(0.85);
     purpleColor = color(102, 51, 153);
+}
+
+// פונקציית התחלת החוויה מהכפתור
+function startExperience() {
+    userStartAudio(); // משחרר את חסימת האודיו של כרום מיידית
+    experienceStarted = true;
     
+    let splash = document.getElementById('splash-screen');
+    splash.style.opacity = '0';
+    splash.style.visibility = 'hidden';
+    
+    // הפעלת המצלמה וה-AI רק לאחר האינטראקציה
     initMediaPipe();
 }
 
 function draw() {
     background(255); 
 
+    if (!experienceStarted) return;
+
     updateEyeStatus(); 
     handleMusicLogic();
     drawPlayerScreen();
 }
 
-// פילטר שמפריד בין מצמוץ טבעי מהיר לעצימה מכוונת
+// פילטר מאוזן: עצירה מיידית בפתיחה, בדיקה ארוכה יותר בעצימה
 function updateEyeStatus() {
     let now = millis();
+    
     if (eyesClosedRealtime !== eyesConfirmedClosed) {
-        if (now - lastEyeStateChangeTime > 200) { 
-            eyesConfirmedClosed = eyesClosedRealtime;
+        if (!eyesClosedRealtime) {
+            // העין פתוחה או זזה מהמסך? עצירה פוזיטיבית מיידית ללא השהייה!
+            eyesConfirmedClosed = false;
+            lastEyeStateChangeTime = now;
+        } else if (now - lastEyeStateChangeTime > 250) { 
+            // רק בכניסה לעצימה מחכים רבע שנייה לוודא שזה לא מצמוץ מקרי
+            eyesConfirmedClosed = true;
         }
     } else {
         lastEyeStateChangeTime = now;
@@ -92,7 +164,6 @@ function updateEyeStatus() {
 // ניהול נגינה קשיח
 function handleMusicLogic() {
     if (!song || !song.isLoaded()) return;
-    userStartAudio(); 
 
     if (eyesConfirmedClosed) {
         if (!song.isPlaying()) {
@@ -166,22 +237,22 @@ function drawPlayerScreen() {
     }
     pop();
 
-    // טיפוגרפיה
+    // טיפוגרפיה משופרת: פוטורה בולד, ללא נקודות
     textAlign(CENTER, CENTER);
     noStroke();
-    textFont("futura-pt", 14);
-    textStyle(NORMAL);
+    textFont("futura-pt", 15);
+    textStyle(BOLD); // משקל כבד
 
     let textY = height - 90;
     let padding = 45; 
     let textW = width - (padding * 2);
 
     if (eyesConfirmedClosed) {
-        fill(purpleColor, 130);
-        text("KEEP THEM CLOSED. TIME IS FLOWING.", width / 2 - textW / 2, textY, textW, 50);
+        fill(purpleColor, 140);
+        text("KEEP THEM CLOSED. TIME IS FLOWING", width / 2 - textW / 2, textY, textW, 50);
     } else {
         fill(purpleColor);
-        text("LOOKING AT THE SCREEN FREEZES TIME.\nCLOSE YOUR EYES.", width / 2 - textW / 2, textY, textW, 50);
+        text("LOOKING AT THE SCREEN FREEZES TIME\nCLOSE YOUR EYES", width / 2 - textW / 2, textY, textW, 50);
     }
 }
 
@@ -236,10 +307,10 @@ function initMediaPipe() {
 }
 
 function onFaceResults(results) {
-    // *** תיקון ברירת מחדל: אם הפנים זזו מהמסך או לא מזוהות - הכל נפתח ונעצר מיד! ***
+    // אם הפנים לא מזוהות פוזיטיבית - המוזיקה נעצרת מיד והעין נפתחת
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
         eyesClosedRealtime = false;
-        eyesConfirmedClosed = false; // עוצר את השיר במקום
+        eyesConfirmedClosed = false; 
         targetPupil.x = 0;
         targetPupil.y = 0;
         return;
@@ -256,6 +327,7 @@ function onFaceResults(results) {
     let leftDist = dist(leftTop.x, leftTop.y, leftBottom.x, leftBottom.y);
     let rightDist = dist(rightTop.x, rightTop.y, rightBottom.x, rightBottom.y);
 
+    // נדרש זיהוי פוזיטיבי של עצימה
     if (leftDist < 0.0165 && rightDist < 0.0165) {
         eyesClosedRealtime = true;
     } else {
